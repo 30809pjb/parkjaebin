@@ -3,352 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI TTS 음성 변환기</title>
+  <title>EE-Exam Proctor: AI 전공 구두시험 채점기</title>
   <style>
     * { box-sizing: border-box; }
-
     body {
-      margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #e3f2fd, #fce4ec);
-      font-family: Arial, sans-serif;
-      color: #333;
+      margin: 0; min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      font-family: 'Segoe UI', system-ui, sans-serif; color: #f1f5f9;
     }
-
     .container {
-      width: min(900px, 92%);
-      margin: 40px auto;
-      background: #ffffff;
-      border-radius: 24px;
-      padding: 28px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.16);
+      width: min(750px, 92%); margin: 40px auto;
+      background: #1e293b; border-radius: 12px; padding: 30px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); border: 1px solid #334155;
     }
-
-    h1 {
-      margin: 0 0 8px;
-      text-align: center;
-      font-size: 28px;
+    h1 { text-align: center; font-size: 26px; color: #38bdf8; margin: 0 0 5px; letter-spacing: -0.5px; }
+    .subtitle { text-align: center; color: #64748b; margin-bottom: 25px; font-size: 13px; text-transform: uppercase; }
+    
+    .auth-box {
+      background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 25px;
+      display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+      border: 1px solid #334155;
     }
-
-    .subtitle {
-      text-align: center;
-      color: #777;
-      margin-bottom: 24px;
-      font-size: 14px;
+    .auth-inputs input {
+      height: 36px; padding: 0 10px; background: #1e293b; border: 1px solid #475569;
+      color: #fff; border-radius: 4px; outline: none; font-size: 13px;
     }
+    .auth-inputs input:focus { border-color: #38bdf8; }
+    .main-content { display: none; }
+    .main-content.active { display: block; }
 
-    .info {
-      padding: 14px;
-      margin-bottom: 20px;
-      border-radius: 14px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-size: 14px;
-      line-height: 1.6;
+    .exam-card {
+      background: #0f172a; padding: 20px; border-radius: 10px; border: 1px solid #334155; margin-bottom: 20px;
     }
-
-    .option-box {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
+    .circuit-tag {
+      display: inline-block; background: #38bdf8; color: #0f172a; 
+      padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px;
     }
+    .quiz-question { font-size: 16px; font-weight: 500; line-height: 1.6; color: #f8fafc; margin-bottom: 15px; }
 
-    select, input {
-      height: 44px;
-      padding: 0 12px;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      font-size: 14px;
-      outline: none;
+    .label { font-weight: bold; margin: 15px 0 6px; color: #94a3b8; font-size: 14px; }
+    input[type="text"] {
+      width: 100%; height: 46px; padding: 0 15px; background: #0f172a;
+      border: 1px solid #475569; color: #38bdf8; border-radius: 6px;
+      font-size: 15px; outline: none; transition: 0.15s;
     }
+    input[type="text"]:focus { border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15); }
 
-    textarea {
-      width: 100%;
-      min-height: 180px;
-      resize: vertical;
-      padding: 16px;
-      border: 1px solid #ddd;
-      border-radius: 16px;
-      font-size: 16px;
-      line-height: 1.5;
-      outline: none;
-      font-family: Arial, sans-serif;
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold;
+      cursor: pointer; font-family: inherit; transition: 0.15s;
     }
+    .btn-rand { background: #6366f1; color: #fff; width: 100%; margin-bottom: 20px; font-size: 15px; }
+    .btn-ai { background: #38bdf8; color: #0f172a; }
+    .btn-tts { background: #10b981; color: #fff; }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    textarea:focus, select:focus, input:focus {
-      border-color: #42a5f5;
-      box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.15);
+    .result-box { margin-top: 25px; padding: 20px; background: #0f172a; border-radius: 10px; border: 1px solid #334155; }
+    .proctor-comment { background: #1e293b; padding: 15px; border-radius: 6px; font-size: 14px; line-height: 1.6; color: #cbd5e1; white-space: pre-wrap; }
+    
+    .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    select {
+      height: 42px; padding: 0 10px; background: #1e293b; border: 1px solid #475569;
+      color: #fff; border-radius: 6px; outline: none;
     }
-
-    .label {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    .button-row {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    button, .download-link {
-      border: none;
-      border-radius: 12px;
-      padding: 0 18px;
-      height: 46px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: 0.15s;
-      font-weight: bold;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    button:hover, .download-link:hover {
-      transform: translateY(-2px);
-      opacity: 0.9;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-      transform: none;
-    }
-
-    .make-btn {
-      background: #42a5f5;
-      color: white;
-    }
-
-    .clear-btn {
-      background: #b0bec5;
-      color: white;
-    }
-
-    .download-link {
-      background: #7e57c2;
-      color: white;
-    }
-
-    .hidden { display: none; }
-
-    .status {
-      min-height: 24px;
-      margin-top: 14px;
-      color: #555;
-      font-size: 14px;
-    }
-
-    .result-box {
-      margin-top: 20px;
-      padding: 18px;
-      border-radius: 18px;
-      background: #f7f9fb;
-      border: 1px solid #edf1f5;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    .help {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #777;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 700px) {
-      .option-box { grid-template-columns: 1fr; }
-      .button-row { justify-content: stretch; }
-      button, .download-link { width: 100%; }
-    }
+    audio { width: 100%; margin-top: 15px; }
   </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // 💡여기에 본인의 Firebase 웹 프로젝트 설정값 6가지를 채워 넣으세요!
+    const firebaseConfig = {
+      apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
+      authDomain: "ppjb-8bd54.firebaseapp.com",
+      projectId: "ppjb-8bd54",
+      storageBucket: "ppjb-8bd54.firebasestorage.app",
+      messagingSenderId: "20897717683",
+      appId: "1:20897717683:web:76d67f991b94e0e5517fc6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // 💡여기에 Apps Script 최종 배포 후 생성된 웹앱 URL을 붙여넣으세요!
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBgw1nuRHWFUUaYVTls8VPcV9maj_UAmx4MzLrcDJTO08k8vMLrT2tB2QRtQLBEvMX/exec';
+
+    // 전역 브릿지 바인딩
+    window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
+    window.fbDb = { db, collection, getDocs };
+    window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
+  </script>
 </head>
 <body>
   <div class="container">
-    <h1>AI TTS 음성 변환기</h1>
-    <div class="subtitle">텍스트를 AI 음성 mp3 파일로 변환합니다</div>
+    <h1>🔌 EE-Exam Proctor</h1>
+    <div class="subtitle">전기전자 전공구두시험 AI 출제 및 실시간 채점 시스템</div>
 
-    <div class="info">
-      현재 구조: GitHub Pages 화면 → Google Apps Script 서버 → OpenAI TTS API → mp3 음성 반환<br />
-      API Key는 index.html에 들어가지 않고 Apps Script의 스크립트 속성에 저장됩니다.
-    </div>
-
-    <div class="option-box">
-      <select id="modelSelect">
-        <option value="tts-1">tts-1 빠른 생성</option>
-        <option value="tts-1-hd">tts-1-hd 고품질</option>
-      </select>
-
-      <select id="voiceSelect">
-        <option value="alloy">alloy</option>
-        <option value="echo">echo</option>
-        <option value="fable">fable</option>
-        <option value="onyx">onyx</option>
-        <option value="nova">nova</option>
-        <option value="shimmer">shimmer</option>
-      </select>
-
-      <input id="speedInput" type="number" min="0.25" max="4.0" step="0.05" value="1.0" placeholder="속도" />
-    </div>
-
-    <div>
-      <div class="label">변환할 텍스트</div>
-      <textarea id="textInput" placeholder="음성으로 바꿀 문장을 입력하세요. 예: 안녕하세요. 오늘은 Firebase와 OpenAI API를 활용한 웹페이지 제작을 배워보겠습니다."></textarea>
-    </div>
-
-    <div class="button-row">
-      <button class="clear-btn" id="clearBtn">초기화</button>
-      <button class="make-btn" id="makeBtn">음성 만들기</button>
-    </div>
-
-    <div id="status" class="status"></div>
-
-    <div id="resultBox" class="result-box hidden">
-      <div class="label">생성된 음성</div>
-      <audio id="audioPlayer" controls></audio>
-      <div class="button-row">
-        <a id="downloadLink" class="download-link" href="#" download="tts-audio.mp3">mp3 다운로드</a>
+    <div class="auth-box">
+      <div id="authStatusText" style="color: #94a3b8; font-size:14px;">실험실 입장을 위해 학생 인증(로그인)이 필요합니다.</div>
+      <div class="auth-inputs" id="authInputs">
+        <input type="email" id="emailInput" placeholder="이메일 주소"/>
+        <input type="password" id="passInput" placeholder="비밀번호"/>
+        <button class="btn" style="background:#334155; color:#fff; padding:6px 12px; font-size:13px;" onclick="handleSignUp()">학생등록</button>
+        <button class="btn" style="background:#38bdf8; color:#0f172a; padding:6px 12px; font-size:13px;" onclick="handleSignIn()">인증 로그인</button>
       </div>
+      <button id="logoutBtn" class="btn" style="background:#ef4444; color:#fff; display:none; padding:6px 12px; font-size:13px;" onclick="handleSignOut()">로그아웃</button>
     </div>
 
-    <div class="help">
-      긴 문장은 생성 시간이 오래 걸릴 수 있습니다. 처음에는 짧은 문장으로 테스트해보세요.<br />
-      속도는 0.25부터 4.0까지 조절할 수 있습니다.
+    <div id="mainService" class="main-content">
+      <button class="btn btn-rand" onclick="loadRandomQuestion()">🎲 Firebase 저장소에서 무작위 문항 출제</button>
+
+      <div class="exam-card" id="examCard" style="display: none;">
+        <div class="circuit-tag" id="questionTag">CODE_READY</div>
+        <div class="quiz-question" id="questionText">질문을 불러오는 중입니다...</div>
+        
+        <label class="label">✍️ 수험자 답안 작성</label>
+        <input type="text" id="userInput" placeholder="답안을 입력하세요. (예: 다이오드 / 150옴 / 오실로스코프)" />
+        
+        <div style="text-align: right; margin-top: 15px;">
+          <button class="btn btn-ai" id="aiBtn" onclick="submitExamAnswer()">시험 채점 및 피드백 요청</button>
+        </div>
+      </div>
+
+      <div id="resultSection" class="result-box" style="display: none;">
+        <label class="label" style="color:#38bdf8;">👨‍🏫 AI 출제위원 채점 의견서</label>
+        <div class="proctor-comment" id="proctorComment">AI가 수험자의 답안을 분석하고 있습니다...</div>
+
+        <div class="control-grid">
+          <select id="voiceSelect">
+            <option value="onyx">onyx (근엄한 중년 교수님)</option>
+            <option value="nova">nova (깐깐한 젊은 박사님)</option>
+            <option value="alloy">alloy (표준 연구원 보이스)</option>
+          </select>
+          <button class="btn btn-tts" id="makeBtn" onclick="playProctorVoice()">🔊 교수님 구두 총평 듣기</button>
+        </div>
+        <audio id="audioPlayer" controls style="display:none;"></audio>
+      </div>
     </div>
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzvCeCidpIBm3Ez_AbmzTRrvzCkPa_7x-irAazDPzljPmuqjjHZOqXxfyS1vNh7tX1/exec';
+    let currentUser = null;
+    let currentQuiz = null;
 
-    const textInput = document.getElementById('textInput');
-    const modelSelect = document.getElementById('modelSelect');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const speedInput = document.getElementById('speedInput');
-    const makeBtn = document.getElementById('makeBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const statusBox = document.getElementById('status');
-    const resultBox = document.getElementById('resultBox');
-    const audioPlayer = document.getElementById('audioPlayer');
-    const downloadLink = document.getElementById('downloadLink');
+    // Firebase 백업용 전공 기초 상식 풀
+    const easyQuestionPool = [
+      { tag: "기초소자-01", desc: "전류를 한쪽 방향으로만 흐르게 하여 역류를 방지하고, 교류를 직류로 바꾸는 정류 작용을 하는 반도체 소자의 이름은 무엇입니까?" },
+      { tag: "계측장비-02", desc: "시간에 따라 변화하는 전기 신호의 전압 파형을 시각적 그래프로 화면에 뿌려주는 전공 계측 장비의 이름은 무엇입니까?" },
+      { tag: "안전소자-03", desc: "회로에 비정상적인 과전류가 흐를 때, 스스로 녹아 끊어짐으로써 전체 시스템을 보호하는 소자의 명칭은 무엇입니까?" }
+    ];
 
-    makeBtn.addEventListener('click', makeSpeech);
-    clearBtn.addEventListener('click', clearPage);
-
-    textInput.addEventListener('keydown', function(event) {
-      if (event.key === 'Enter' && event.ctrlKey) {
-        makeSpeech();
-      }
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        if (!window.fbAuth) return;
+        window.fbAuth.auth.onAuthStateChanged((user) => {
+          if (user) {
+            currentUser = user;
+            document.getElementById('authStatusText').textContent = `👨‍🎓 수험자 인증 완료: ${user.email}`;
+            document.getElementById('authInputs').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'block';
+            document.getElementById('mainService').classList.add('active');
+          } else {
+            currentUser = null;
+            document.getElementById('authStatusText').textContent = `실험실 입장을 위해 학생 인증(로그인)이 필요합니다.`;
+            document.getElementById('authInputs').style.display = 'flex';
+            document.getElementById('logoutBtn').style.display = 'none';
+            document.getElementById('mainService').classList.remove('active');
+          }
+        });
+      }, 1000);
     });
 
-    async function makeSpeech() {
-      const text = textInput.value.trim();
-      const model = modelSelect.value;
-      const voice = voiceSelect.value;
-      const speed = Number(speedInput.value || 1.0);
+    async function handleSignUp() {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passInput').value;
+      try { await window.fbAuth.createUserWithEmailAndPassword(window.fbAuth.auth, email, password); alert('학생 등록 완료! 로그인해 주세요.'); } catch(e) { alert(e.message); }
+    }
 
-      if (!text) {
-        alert('음성으로 변환할 텍스트를 입력해주세요.');
-        return;
-      }
+    async function handleSignIn() {
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passInput').value;
+      try { await window.fbAuth.signInWithEmailAndPassword(window.fbAuth.auth, email, password); } catch(e) { alert(e.message); }
+    }
 
-      if (speed < 0.25 || speed > 4.0) {
-        alert('속도는 0.25부터 4.0 사이로 입력해주세요.');
-        return;
+    function handleSignOut() { window.fbAuth.signOut(window.fbAuth.auth); }
+
+    // Firebase Firestore 'circuits_quiz' 컬렉션에서 무작위 문항 로드
+    async function loadRandomQuestion() {
+      document.getElementById('resultSection').style.display = 'none';
+      document.getElementById('userInput').value = '';
+      
+      try {
+        const querySnapshot = await window.fbDb.getDocs(window.fbDb.collection(window.fbDb.db, "circuits_quiz"));
+        let dbQuizList = [];
+        querySnapshot.forEach((doc) => { dbQuizList.push(doc.data()); });
+        
+        if(dbQuizList.length === 0) { dbQuizList = easyQuestionPool; }
+
+        const randIdx = Math.floor(Math.random() * dbQuizList.length);
+        currentQuiz = dbQuizList[randIdx];
+
+        document.getElementById('questionTag').textContent = currentQuiz.tag;
+        document.getElementById('questionText').textContent = currentQuiz.desc;
+        document.getElementById('examCard').style.display = 'block';
+      } catch (e) {
+        currentQuiz = easyQuestionPool[Math.floor(Math.random() * easyQuestionPool.length)];
+        document.getElementById('questionTag').textContent = currentQuiz.tag;
+        document.getElementById('questionText').textContent = currentQuiz.desc;
+        document.getElementById('examCard').style.display = 'block';
       }
+    }
+
+    // Apps Script 가동 ➡️ OpenAI Chat API로 채점 리포트 생성
+    async function submitExamAnswer() {
+      const userAns = document.getElementById('userInput').value.trim();
+      if(!userAns) return alert('답안을 입력하세요.');
+
+      const aiBtn = document.getElementById('aiBtn');
+      aiBtn.disabled = true; aiBtn.textContent = '⚡ 채점 중...';
+      document.getElementById('resultSection').style.display = 'block';
+      document.getElementById('proctorComment').textContent = '제출된 답변을 교수님 관점에서 판독하고 있습니다...';
+
+      const promptPayload = `[출제 문항]: ${currentQuiz.desc}\n[학생 답안]: ${userAns}\n이 정답인지 검증 및 상세 채평 피드백을 제공해라.`;
 
       try {
-        setLoading(true);
-        resultBox.classList.add('hidden');
-        statusBox.textContent = 'Apps Script 서버에 TTS 요청을 보내는 중입니다.';
-
-        const response = await fetch(APPS_SCRIPT_URL, {
+        const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
-            type: 'tts',
+            question: promptPayload // handleChat 함수용 필드 규격 매칭
+          })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        document.getElementById('proctorComment').textContent = data.answer;
+      } catch (error) {
+        document.getElementById('proctorComment').textContent = '오류 발생: ' + error.message;
+      } finally {
+        aiBtn.disabled = false; aiBtn.textContent = '시험 채점 및 피드백 요청';
+      }
+    }
+
+    // Apps Script 가동 ➡️ OpenAI TTS API로 성우 보이스 플레이
+    async function playProctorVoice() {
+      const text = document.getElementById('proctorComment').textContent;
+      const makeBtn = document.getElementById('makeBtn');
+      makeBtn.disabled = true; makeBtn.textContent = '⏳ 오디오 합성 중...';
+
+      try {
+        const response = await fetch(window.APPS_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'tts', // handleTTS 유도 스위치
             text: text,
-            model: model,
-            voice: voice,
-            speed: speed
+            model: 'tts-1',
+            voice: document.getElementById('voiceSelect').value,
+            speed: 1.0
           })
         });
 
         const data = await response.json();
+        if (data.error) throw new Error(data.error);
 
-        if (data.error) {
-          throw new Error(data.error);
+        const byteCharacters = atob(data.audioBase64);
+        const byteArrays = [];
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) { byteNumbers[i] = slice.charCodeAt(i); }
+          byteArrays.push(new Uint8Array(byteNumbers));
         }
-
-        if (!data.audioBase64) {
-          throw new Error('음성 데이터를 받지 못했습니다.');
-        }
-
-        const audioUrl = base64ToAudioUrl(data.audioBase64, 'audio/mpeg');
-
-        audioPlayer.src = audioUrl;
-        downloadLink.href = audioUrl;
-        downloadLink.download = makeFileName();
-        resultBox.classList.remove('hidden');
-        statusBox.textContent = '음성 생성 완료';
+        
+        const player = document.getElementById('audioPlayer');
+        player.src = URL.createObjectURL(new Blob(byteArrays, { type: 'audio/mpeg' }));
+        player.style.display = 'block';
+        player.play();
       } catch (error) {
-        console.error(error);
-        statusBox.textContent = '요청 실패';
-        alert('오류가 발생했습니다.\n\n' + error.message);
+        alert('TTS 오디오 트랙 생성 실패: ' + error.message);
       } finally {
-        setLoading(false);
+        makeBtn.disabled = false; makeBtn.textContent = '🔊 교수님 구두 총평 듣기';
       }
-    }
-
-    function base64ToAudioUrl(base64, mimeType) {
-      const byteCharacters = atob(base64);
-      const byteArrays = [];
-
-      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        const slice = byteCharacters.slice(offset, offset + 512);
-        const byteNumbers = new Array(slice.length);
-
-        for (let i = 0; i < slice.length; i++) {
-          byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-      }
-
-      const blob = new Blob(byteArrays, { type: mimeType });
-      return URL.createObjectURL(blob);
-    }
-
-    function makeFileName() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hour = String(now.getHours()).padStart(2, '0');
-      const minute = String(now.getMinutes()).padStart(2, '0');
-      return `tts-${year}${month}${day}-${hour}${minute}.mp3`;
-    }
-
-    function setLoading(isLoading) {
-      makeBtn.disabled = isLoading;
-      makeBtn.textContent = isLoading ? '생성 중...' : '음성 만들기';
-    }
-
-    function clearPage() {
-      textInput.value = '';
-      statusBox.textContent = '';
-      audioPlayer.removeAttribute('src');
-      downloadLink.href = '#';
-      resultBox.classList.add('hidden');
     }
   </script>
 </body>
 </html>
-
