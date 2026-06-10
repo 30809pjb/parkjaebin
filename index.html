@@ -40,6 +40,15 @@
       padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px;
     }
     .quiz-question { font-size: 16px; font-weight: 500; line-height: 1.6; color: #f8fafc; margin-bottom: 15px; }
+    
+    /* 🚨 이미지 박스 스타일 추가 */
+    .quiz-image-box {
+      width: 100%; text-align: center; margin: 15px 0; background: #1e293b; 
+      padding: 10px; border-radius: 8px; border: 1px solid #334155;
+    }
+    .quiz-image-box img {
+      max-width: 100%; max-height: 300px; border-radius: 6px; object-fit: contain;
+    }
 
     .label { font-weight: bold; margin: 15px 0 6px; color: #94a3b8; font-size: 14px; }
     input[type="text"] {
@@ -75,7 +84,7 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 💡여기에 본인의 Firebase 웹 프로젝트 설정값 6가지를 채워 넣으세요!
+    // 💡 본인의 Firebase 설정값 보존됨
     const firebaseConfig = {
       apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
       authDomain: "ppjb-8bd54.firebaseapp.com",
@@ -89,8 +98,8 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // 💡여기에 Apps Script 최종 배포 후 생성된 웹앱 URL을 붙여넣으세요!
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCh5bIps26thXVbbkhNdWpB2Iy73jmOP3mFQ647J_iOS_sYuO4Q4vdqEZJ-7ieWskP/exec';
+    // 💡 본인의 Apps Script 웹앱 URL 보존됨
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbCh5bIps26thXVbbkhNdWpB2Iy73jmOP3mFQ647J_iOS_sYuO4Q4vdqEZJ-7ieWskP/exec';
 
     // 전역 브릿지 바인딩
     window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
@@ -115,14 +124,18 @@
     </div>
 
     <div id="mainService" class="main-content">
-      <button class="btn btn-rand" onclick="loadRandomQuestion()">🎲 Firebase 저장소에서 무작위 문항 출제</button>
+      <button class="btn btn-rand" onclick="loadRandomQuestion()">🎲 Firebase 저장소에서 무작위 이미지 문항 출제</button>
 
       <div class="exam-card" id="examCard" style="display: none;">
         <div class="circuit-tag" id="questionTag">CODE_READY</div>
         <div class="quiz-question" id="questionText">질문을 불러오는 중입니다...</div>
         
+        <div class="quiz-image-box" id="quizImageBox" style="display: none;">
+          <img id="quizImg" src="" alt="전공 이미지 문제">
+        </div>
+        
         <label class="label">✍️ 수험자 답안 작성</label>
-        <input type="text" id="userInput" placeholder="답안을 입력하세요. (예: 다이오드 / 150옴 / 오실로스코프)" />
+        <input type="text" id="userInput" placeholder="이미지를 분석하여 정답을 입력하세요." />
         
         <div style="text-align: right; margin-top: 15px;">
           <button class="btn btn-ai" id="aiBtn" onclick="submitExamAnswer()">시험 채점 및 피드백 요청</button>
@@ -150,11 +163,10 @@
     let currentUser = null;
     let currentQuiz = null;
 
-    // Firebase 백업용 전공 기초 상식 풀
+    // Firebase 연동 실패 시 사용할 이미지 백업 풀 (테스트용 이미지 주소 포함)
     const easyQuestionPool = [
-      { tag: "기초소자-01", desc: "전류를 한쪽 방향으로만 흐르게 하여 역류를 방지하고, 교류를 직류로 바꾸는 정류 작용을 하는 반도체 소자의 이름은 무엇입니까?" },
-      { tag: "계측장비-02", desc: "시간에 따라 변화하는 전기 신호의 전압 파형을 시각적 그래프로 화면에 뿌려주는 전공 계측 장비의 이름은 무엇입니까?" },
-      { tag: "안전소자-03", desc: "회로에 비정상적인 과전류가 흐를 때, 스스로 녹아 끊어짐으로써 전체 시스템을 보호하는 소자의 명칭은 무엇입니까?" }
+      { tag: "소자판독-01", desc: "다음 그림에 표시된 저항의 색띠를 읽고, 이 저항의 정확한 저항값(옴)은 얼마인지 맞추시오.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Resistor_Network.jpg/320px-Resistor_Network.jpg" },
+      { tag: "계측기-02", desc: "이 계측 장비 화면에 표시된 전압의 최대값(Vpk)과 주파수는 얼마인지 서술하시오.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Oscilloscope_sine_wave.jpg/320px-Oscilloscope_sine_wave.jpg" }
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -192,7 +204,7 @@
 
     function handleSignOut() { window.fbAuth.signOut(window.fbAuth.auth); }
 
-    // Firebase Firestore 'circuits_quiz' 컬렉션에서 무작위 문항 로드
+    // Firebase 'circuits_quiz' 컬렉션에서 문항 로드 (이미지 대응)
     async function loadRandomQuestion() {
       document.getElementById('resultSection').style.display = 'none';
       document.getElementById('userInput').value = '';
@@ -209,16 +221,29 @@
 
         document.getElementById('questionTag').textContent = currentQuiz.tag;
         document.getElementById('questionText').textContent = currentQuiz.desc;
+        
+        // 🚨 이미지 필드가 존재하면 화면에 띄우는 로직 반영
+        const imgBox = document.getElementById('quizImageBox');
+        const imgTag = document.getElementById('quizImg');
+        if (currentQuiz.imageUrl) {
+          imgTag.src = currentQuiz.imageUrl;
+          imgBox.style.display = 'block';
+        } else {
+          imgBox.style.display = 'none';
+        }
+
         document.getElementById('examCard').style.display = 'block';
       } catch (e) {
         currentQuiz = easyQuestionPool[Math.floor(Math.random() * easyQuestionPool.length)];
         document.getElementById('questionTag').textContent = currentQuiz.tag;
         document.getElementById('questionText').textContent = currentQuiz.desc;
+        document.getElementById('quizImg').src = currentQuiz.imageUrl;
+        document.getElementById('quizImageBox').style.display = 'block';
         document.getElementById('examCard').style.display = 'block';
       }
     }
 
-    // Apps Script 가동 ➡️ OpenAI Chat API로 채점 리포트 생성
+    // AI에게 채점 요청 시 이미지 컨텍스트 정보 포함하여 전송
     async function submitExamAnswer() {
       const userAns = document.getElementById('userInput').value.trim();
       if(!userAns) return alert('답안을 입력하세요.');
@@ -228,13 +253,18 @@
       document.getElementById('resultSection').style.display = 'block';
       document.getElementById('proctorComment').textContent = '제출된 답변을 교수님 관점에서 판독하고 있습니다...';
 
-      const promptPayload = `[출제 문항]: ${currentQuiz.desc}\n[학생 답안]: ${userAns}\n이 정답인지 검증 및 상세 채평 피드백을 제공해라.`;
+      // 🚨 AI가 이미지 기반 평가를 수행할 수 있도록 프롬프트 가공
+      let promptPayload = `[출제 문제 설명]: ${currentQuiz.desc}\n`;
+      if(currentQuiz.imageUrl) {
+        promptPayload += `[참고 이미지 주소]: ${currentQuiz.imageUrl}\n`;
+      }
+      promptPayload += `[학생이 제출한 답안]: ${userAns}\n위 내용을 바탕으로 학생이 이미지를 올바르게 해석하고 정답을 맞추었는지 엄격하게 채점하여 상세 피드백을 한글 구어체로 제공하라.`;
 
       try {
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
-            question: promptPayload // handleChat 함수용 필드 규격 매칭
+            question: promptPayload
           })
         });
         const data = await response.json();
@@ -247,7 +277,6 @@
       }
     }
 
-    // Apps Script 가동 ➡️ OpenAI TTS API로 성우 보이스 플레이
     async function playProctorVoice() {
       const text = document.getElementById('proctorComment').textContent;
       const makeBtn = document.getElementById('makeBtn');
@@ -257,7 +286,7 @@
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
-            type: 'tts', // handleTTS 유도 스위치
+            type: 'tts',
             text: text,
             model: 'tts-1',
             voice: document.getElementById('voiceSelect').value,
