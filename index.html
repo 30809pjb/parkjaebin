@@ -83,7 +83,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 💡 Firebase 설정값
     const firebaseConfig = {
       apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
       authDomain: "ppjb-8bd54.firebaseapp.com",
@@ -97,10 +96,9 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // 🚨 [여기가 핵심!!] 여기에 구글 앱스 스크립트 '최종 새 배포 URL'을 빈틈없이 넣어줘!
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCh5bIps26thXVbbkhNdWpB2Iy73jmOP3mFQ647J_iOS_sYuO4Q4vdqEZJ-7ieWskP/exec';
+    // 🚨 [매우 중요] 만약 주소가 바뀌었다면 네 진짜 구글 웹앱 주소로 꼭 교체해줘! 공백 없이!
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTS-n6dNxhXGHxck-BL97z9l2PPrqZbl0tqjtPIP44MVFtyOiTwizk4jva8GMuV38p/exec';
 
-    // 전역 바인딩
     window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
     window.fbDb = { db, collection, getDocs };
     window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
@@ -239,7 +237,7 @@
       }
     }
 
-    // 🚨 네트워크 에러 추적 팝업이 이식된 채점 함수
+    // ⚡ [수정 완료] 프리플라이트를 유발하는 headers 설정을 제거하여 통과하도록 조치
     async function submitExamAnswer() {
       const userAns = document.getElementById('userInput').value.trim();
       if(!userAns) return alert('답안을 입력하세요.');
@@ -256,14 +254,8 @@
       promptPayload += `[학생이 제출한 답안]: ${userAns}\n위 내용을 바탕으로 채점하여 피드백을 제공하라.`;
 
       try {
-        // 주소값 검증용 안전장치
-        if (!window.APPS_SCRIPT_URL || window.APPS_SCRIPT_URL.indexOf('http') !== 0) {
-          throw new Error('주소창 오류: APPS_SCRIPT_URL 변수 설정이 올바르지 않은 주소 형식입니다.');
-        }
-
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ question: promptPayload })
         });
         
@@ -271,14 +263,14 @@
         if (data.error) throw new Error(data.error);
         document.getElementById('proctorComment').textContent = data.answer;
       } catch (error) {
+        console.error(error);
         document.getElementById('proctorComment').textContent = '오류 발생: ' + error.message;
-        // 🚨 진짜 원인을 즉시 팝업으로 사용자에게 경고함
-        alert('🚨 시스템 연결 긴급 경고!\n\n원인: ' + error.message + '\n\n해결법: GitHub 코드 위쪽의 APPS_SCRIPT_URL 주소가 진짜 구글 웹앱 주소(https://script.google.com/...)로 입력되었는지 꼭 확인해 주세요.');
       } finally {
         aiBtn.disabled = false; aiBtn.textContent = '시험 채점 및 피드백 요청';
       }
     }
 
+    // ⚡ [수정 완료] 프리플라이트를 유발하는 headers 설정을 완전히 제거
     async function playProctorVoice() {
       const text = document.getElementById('proctorComment').textContent;
       const makeBtn = document.getElementById('makeBtn');
@@ -287,7 +279,6 @@
       try {
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             type: 'tts',
             text: text,
