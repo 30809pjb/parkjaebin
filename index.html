@@ -41,7 +41,6 @@
     }
     .quiz-question { font-size: 16px; font-weight: 500; line-height: 1.6; color: #f8fafc; margin-bottom: 15px; }
     
-    /* 🚨 이미지 박스 스타일 추가 */
     .quiz-image-box {
       width: 100%; text-align: center; margin: 15px 0; background: #1e293b; 
       padding: 10px; border-radius: 8px; border: 1px solid #334155;
@@ -84,7 +83,7 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 💡 본인의 Firebase 설정값 보존됨
+    // 💡 Firebase 설정값
     const firebaseConfig = {
       apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
       authDomain: "ppjb-8bd54.firebaseapp.com",
@@ -98,10 +97,10 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // 💡 본인의 Apps Script 웹앱 URL 보존됨
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjaUfrWK5GYej4tf7JSD4lJn5TbfT48fpOoqdVVSkYc3JmUGn7DGuJhoMg8HLo-Zdv/exec';
+    // 🚨 [여기가 핵심!!] 여기에 구글 앱스 스크립트 '최종 새 배포 URL'을 빈틈없이 넣어줘!
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCh5bIps26thXVbbkhNdWpB2Iy73jmOP3mFQ647J_iOS_sYuO4Q4vdqEZJ-7ieWskP/exec';
 
-    // 전역 브릿지 바인딩
+    // 전역 바인딩
     window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
     window.fbDb = { db, collection, getDocs };
     window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
@@ -163,7 +162,6 @@
     let currentUser = null;
     let currentQuiz = null;
 
-    // Firebase 연동 실패 시 사용할 이미지 백업 풀 (테스트용 이미지 주소 포함)
     const easyQuestionPool = [
       { tag: "소자판독-01", desc: "다음 그림에 표시된 저항의 색띠를 읽고, 이 저항의 정확한 저항값(옴)은 얼마인지 맞추시오.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Resistor_Network.jpg/320px-Resistor_Network.jpg" },
       { tag: "계측기-02", desc: "이 계측 장비 화면에 표시된 전압의 최대값(Vpk)과 주파수는 얼마인지 서술하시오.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Oscilloscope_sine_wave.jpg/320px-Oscilloscope_sine_wave.jpg" }
@@ -204,7 +202,6 @@
 
     function handleSignOut() { window.fbAuth.signOut(window.fbAuth.auth); }
 
-    // Firebase 'circuits_quiz' 컬렉션에서 문항 로드 (이미지 대응)
     async function loadRandomQuestion() {
       document.getElementById('resultSection').style.display = 'none';
       document.getElementById('userInput').value = '';
@@ -222,7 +219,6 @@
         document.getElementById('questionTag').textContent = currentQuiz.tag;
         document.getElementById('questionText').textContent = currentQuiz.desc;
         
-        // 🚨 이미지 필드가 존재하면 화면에 띄우는 로직 반영
         const imgBox = document.getElementById('quizImageBox');
         const imgTag = document.getElementById('quizImg');
         if (currentQuiz.imageUrl) {
@@ -243,7 +239,7 @@
       }
     }
 
-    // AI에게 채점 요청 시 이미지 컨텍스트 정보 포함하여 전송
+    // 🚨 네트워크 에러 추적 팝업이 이식된 채점 함수
     async function submitExamAnswer() {
       const userAns = document.getElementById('userInput').value.trim();
       if(!userAns) return alert('답안을 입력하세요.');
@@ -253,25 +249,31 @@
       document.getElementById('resultSection').style.display = 'block';
       document.getElementById('proctorComment').textContent = '제출된 답변을 교수님 관점에서 판독하고 있습니다...';
 
-      // 🚨 AI가 이미지 기반 평가를 수행할 수 있도록 프롬프트 가공
       let promptPayload = `[출제 문제 설명]: ${currentQuiz.desc}\n`;
       if(currentQuiz.imageUrl) {
         promptPayload += `[참고 이미지 주소]: ${currentQuiz.imageUrl}\n`;
       }
-      promptPayload += `[학생이 제출한 답안]: ${userAns}\n위 내용을 바탕으로 학생이 이미지를 올바르게 해석하고 정답을 맞추었는지 엄격하게 채점하여 상세 피드백을 한글 구어체로 제공하라.`;
+      promptPayload += `[학생이 제출한 답안]: ${userAns}\n위 내용을 바탕으로 채점하여 피드백을 제공하라.`;
 
       try {
+        // 주소값 검증용 안전장치
+        if (!window.APPS_SCRIPT_URL || window.APPS_SCRIPT_URL.indexOf('http') !== 0) {
+          throw new Error('주소창 오류: APPS_SCRIPT_URL 변수 설정이 올바르지 않은 주소 형식입니다.');
+        }
+
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
-          body: JSON.stringify({
-            question: promptPayload
-          })
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ question: promptPayload })
         });
+        
         const data = await response.json();
         if (data.error) throw new Error(data.error);
         document.getElementById('proctorComment').textContent = data.answer;
       } catch (error) {
         document.getElementById('proctorComment').textContent = '오류 발생: ' + error.message;
+        // 🚨 진짜 원인을 즉시 팝업으로 사용자에게 경고함
+        alert('🚨 시스템 연결 긴급 경고!\n\n원인: ' + error.message + '\n\n해결법: GitHub 코드 위쪽의 APPS_SCRIPT_URL 주소가 진짜 구글 웹앱 주소(https://script.google.com/...)로 입력되었는지 꼭 확인해 주세요.');
       } finally {
         aiBtn.disabled = false; aiBtn.textContent = '시험 채점 및 피드백 요청';
       }
@@ -285,6 +287,7 @@
       try {
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             type: 'tts',
             text: text,
