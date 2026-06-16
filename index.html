@@ -73,6 +73,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
@@ -80,16 +81,19 @@
       projectId: "ppjb-8bd54",
       storageBucket: "ppjb-8bd54.firebasestorage.app",
       messagingSenderId: "20897717683",
-      appId: "1:20897717683:web:76d67f991b94e0e5517fc6"
+      appId: "1:20897717683:web:76d67f991b94e0e5517fc6",
+      databaseURL: "https://ppjb-8bd54-default-rtdb.firebaseio.com" // 데이터베이스 경로 연동 완료
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const database = getDatabase(app); // 👈 데이터베이스 연결 객체 활성화
     
-    // 🚨 [필수 교체] 배포하여 새로 얻은 구글 스크립트 웹앱 주소를 꼭 여기에 넣어줘!
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqN3HAuT1PGXIHtpSnwxw06eZ6qteAKSTGAu_2JQqBhwtxb2X1wBodvRSmEA63sXoF/exec';
+    // 🚨 [필수 확인] 네 최신 구글 웹앱 URL 주소인지 확인해줘!
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhdvtlWniuPokcW0Dd88-rGQHW0KXmpY8ZSXTyzID_lz1PWlJsoIrxxB5ir9OdYnfQ/exec';
 
     window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
+    window.fbDB = { database, ref, push }; // 자바스크립트에서 쓸 수 있게 전역에 등록
     window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
   </script>
 </head>
@@ -145,7 +149,6 @@
     let currentUser = null;
     let currentQuiz = null;
 
-    // 💡 텍스트 기반 전공 질문 풀 (기초 난이도)
     const textQuestionPool = [
       { tag: "회로이론-기초", desc: "옴의 법칙(Ohm's Law)에서 전압(V), 전류(I), 저항(R) 삼각 관계의 정의를 간단하게 설명하고, 저항이 일정할 때 전압이 변하면 전류는 어떻게 변하는지 서술하시오." },
       { tag: "전자회로-소자", desc: "다이오드(Diode)의 가장 대표적인 전기적 특성(기능) 한 가지를 설명하고, 순방향 바이어스와 역방향 바이어스일 때 전류의 흐름이 각각 어떻게 되는지 설명하시오." },
@@ -199,7 +202,6 @@
       document.getElementById('examCard').style.display = 'block';
     }
 
-    // 🚨 CORS 회피를 위해 브라우저가 예비 요청(OPTIONS)을 유발하지 않도록 headers 선언 완전 배제
     async function submitExamAnswer() {
       const userAns = document.getElementById('userInput').value.trim();
       if(!userAns) return alert('답안을 입력하세요.');
@@ -219,7 +221,30 @@
         
         const data = await response.json();
         if (data.error) throw new Error(data.error);
+        
+        // 1. 브라우저 화면에 AI 채점 의견서 표시
         document.getElementById('proctorComment').textContent = data.answer;
+
+        // 🚨 [데이터베이스 저장 연동 추가]
+        // 로그인 상태이고 데이터베이스 라이브러리가 준비되었다면 파이어베이스에 누적 저장 시작!
+        if (currentUser && window.fbDB) {
+          const now = new Date();
+          const timestamp = now.getFullYear() + ". " + (now.getMonth() + 1) + ". " + now.getDate() + ". " + (now.getHours() >= 12 ? "오후 " : "오전 ") + (now.getHours() % 12 || 12) + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
+          
+          // 로그인한 학생 고유의users/UID/items 경로 참조 생성
+          const userExamRef = window.fbDB.ref(window.fbDB.database, 'users/' + currentUser.uid + '/items');
+          
+          // 파이어베이스 트리에 밀어넣기
+          await window.fbDB.push(userExamRef, {
+            title: "박재빈_" + currentQuiz.tag, // 과목 태그 명시
+            content: userAns,                  // 수험자 주관식 답안
+            ai_feedback: data.answer,          // 👈 생성된 AI 해설 의견서를 같이 저장!
+            createdAt: timestamp,
+            updatedAt: ""
+          });
+          console.log("파이어베이스 실시간 데이터베이스 백업 성공!");
+        }
+
       } catch (error) {
         console.error(error);
         document.getElementById('proctorComment').textContent = '오류 발생: ' + error.message;
