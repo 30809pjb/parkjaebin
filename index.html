@@ -74,7 +74,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // Firebase 연동 (인증용 기능 유지)
     const firebaseConfig = {
       apiKey: "AIzaSyDpxWyk5OZcjZ7JqHli-lO09HWf7H9w8gA",
       authDomain: "ppjb-8bd54.firebaseapp.com",
@@ -87,8 +86,8 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
-    // 🚨 [필수 확인] 작동 확인된 너의 구글 웹앱 주소로 세팅되어 있는지 꼭 확인해!
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_ixHI9Fptas3Jattv0fvoaGWiCMj7HaDceK8qfNewWUW-8mnyRjckFc0w8BjXELRi/exec';
+    // 🚨 [필수 교체] 배포하여 새로 얻은 구글 스크립트 웹앱 주소를 꼭 여기에 넣어줘!
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqN3HAuT1PGXIHtpSnwxw06eZ6qteAKSTGAu_2JQqBhwtxb2X1wBodvRSmEA63sXoF/exec';
 
     window.fbAuth = { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
     window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
@@ -146,14 +145,13 @@
     let currentUser = null;
     let currentQuiz = null;
 
-    // 💡 이미지 없는 순수 텍스트 전공 질문 족보 (기초~일반 난이도)
+    // 💡 텍스트 기반 전공 질문 풀 (기초 난이도)
     const textQuestionPool = [
       { tag: "회로이론-기초", desc: "옴의 법칙(Ohm's Law)에서 전압(V), 전류(I), 저항(R) 삼각 관계의 정의를 간단하게 설명하고, 저항이 일정할 때 전압이 변하면 전류는 어떻게 변하는지 서술하시오." },
       { tag: "전자회로-소자", desc: "다이오드(Diode)의 가장 대표적인 전기적 특성(기능) 한 가지를 설명하고, 순방향 바이어스와 역방향 바이어스일 때 전류의 흐름이 각각 어떻게 되는지 설명하시오." },
       { tag: "회로이론-법칙", desc: "키르히호프의 전류 법칙(KCL)과 전압 법칙(KVL) 중 하나를 선택하여 그 핵심 개념이 무엇을 의미하는지 간단히 설명하시오." },
       { tag: "디지털공학", desc: "디지털 논리회로에서 AND 게이트와 OR 게이트의 동작 차이점을 입력과 출력 결과의 관점에서 비교하여 서술하시오." },
-      { tag: "전자회로-부품", desc: "콘덴서(커패시터)가 회로 내부에서 수행하는 주된 역할이 무엇인지 에너지를 충전하는 관점이나 신호를 필터링하는 관점을 엮어서 간단히 설명하시오." },
-      { tag: "전력공학-상식", desc: "우리가 가정에서 사용하는 전기는 직류(DC)입니까, 교류(AC)입니까? 그렇게 공급되는 주된 이유나 장점을 한 가지만 서술하시오." }
+      { tag: "전자회로-부품", desc: "콘덴서(커패시터)가 회로 내부에서 수행하는 주된 역할이 무엇인지 에너지를 충전하는 관점이나 신호를 필터링하는 관점을 엮어서 간단히 설명하시오." }
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -191,19 +189,17 @@
 
     function handleSignOut() { window.fbAuth.signOut(window.fbAuth.auth); }
 
-    // 🎲 텍스트 풀에서 랜덤 추출하는 함수
     function loadRandomQuestion() {
       document.getElementById('resultSection').style.display = 'none';
       document.getElementById('userInput').value = '';
-      
       const randIdx = Math.floor(Math.random() * textQuestionPool.length);
       currentQuiz = textQuestionPool[randIdx];
-
       document.getElementById('questionTag').textContent = currentQuiz.tag;
       document.getElementById('questionText').textContent = currentQuiz.desc;
       document.getElementById('examCard').style.display = 'block';
     }
 
+    // 🚨 CORS 회피를 위해 브라우저가 예비 요청(OPTIONS)을 유발하지 않도록 headers 선언 완전 배제
     async function submitExamAnswer() {
       const userAns = document.getElementById('userInput').value.trim();
       if(!userAns) return alert('답안을 입력하세요.');
@@ -213,13 +209,12 @@
       document.getElementById('resultSection').style.display = 'block';
       document.getElementById('proctorComment').textContent = '제출된 답변을 교수님 관점에서 판독하고 있습니다...';
 
-      let promptPayload = `[출제 문제 설명]: ${currentQuiz.desc}\n`;
-      promptPayload += `[학생이 제출한 답안]: ${userAns}\n위 내용을 바탕으로 기초 개념에 맞춰 부드럽게 채점하여 피드백을 제공하라.`;
+      let promptPayload = `[출제 문제 설명]: ${currentQuiz.desc}\n[학생이 제출한 답안]: ${userAns}\n채점하여 피드백을 제공하라.`;
 
       try {
         const response = await fetch(window.APPS_SCRIPT_URL, {
           method: 'POST',
-          body: JSON.stringify({ question: promptPayload })
+          body: JSON.stringify({ type: 'chat', question: promptPayload })
         });
         
         const data = await response.json();
